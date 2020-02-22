@@ -1,0 +1,80 @@
+---
+title: "Ad_success Feature Engineering and Modelling"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo = FALSE, message = FALSE, results='hide'}
+
+data <- data.frame(read.csv(file = "/Users/maheema/Desktop/Data Science - Personal/Ad_Success/Data/Train.csv", header=TRUE))
+summary(cars)
+```
+
+
+
+```{r, echo=FALSE, message=FALSE}
+require(knitr)
+require(dplyr)
+
+##Format data 
+data_bin <- mutate(data, netgain = ifelse(netgain == "true", 1, 0))
+Ad_success <- mutate(data_bin, comb_loc = case_when(airlocation == "United-States" ~ "United-States",
+                                                    airlocation == "Mexico" ~ "Mexico",
+                                                    TRUE ~ "Other"))
+colnames(Ad_success)[2] <- "relationship_status"
+
+```
+
+
+## Feature Enginering 
+
+We try to create representaions of the data that increase the effectiveness of the model. 
+In this project, we'll use feature transformers such as:
+  + Creating Dummy variables
+  + Transforming variables
+  + Binning continuous variables to categories
+  + Removing low variance variables
+  
+  
+The airlocation has 42 unique locations. However almot 90% of the ads were aired in the United States. 
+To include all these categories may cause issues in training the model since some categories may not be in the training set but could be present in the testing set. 
+
+One way to fix this is by creating a dummy variable for US. 
+
+
+```{r, echo=FALSE, message=FALSE}
+require(caret)
+require(dplyr)
+
+#Creating a dummy variable
+trans_data <- Ad_success %>% mutate(US = if_else(airlocation == "United-States", 1, 0))
+
+
+#Transforming variables
+
+b <- c(-Inf, 39, 40, Inf)
+names <- c("short", "medium", "long")
+
+trans_data$runtime_cat <- cut(trans_data$average_runtime.minutes_per_week., breaks = b, labels = names)
+trans_data <- trans_data %>% select(-average_runtime.minutes_per_week.)
+
+#Removing low variance variables 
+nzv <- nearZeroVar(trans_data)
+
+#The variable airlocation and ratings were recommended to be removed based on small variance
+pred_data <- trans_data %>% select(-airlocation, -ratings)
+colnames(pred_data)
+
+
+```
+
+
+##Predictive Modelling 
+
+
+
+
