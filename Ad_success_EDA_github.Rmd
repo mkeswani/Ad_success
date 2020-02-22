@@ -1,0 +1,382 @@
+---
+title: "Advertisment Success - EDA"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**This project evaluates a data set containing various advertisements to determine which variables are important in creating a successful Ad.**
+
+
+```{r, echo = FALSE, message = FALSE, results='hide'}
+data <- data.frame(read.csv(file = "/Users/maheema/Desktop/Data Science - Personal/Ad_Success/Data/Train.csv", header=TRUE))
+```
+
+
+```{r, echo=FALSE, message=FALSE}
+require(knitr)
+require(dplyr)
+
+##Format data 
+data_bin <- mutate(data, netgain = ifelse(netgain == "true", 1, 0))
+Ad_success <- mutate(data_bin, comb_loc = case_when(airlocation == "United-States" ~ "United-States",
+                                                airlocation == "Mexico" ~ "Mexico",
+                                                TRUE ~ "Other"))
+colnames(Ad_success)[2] <- "relationship_status"
+#kable(head(Ad_success[1:5]))
+```
+
+The dataset contains 12 variables in total. This inclused a unique ID (which will not be used in the model). The response variable is a binary output which determines whether the ad had a net gain or net loss. This was coded as a "1" if the ad had a net gain and "0" if the ad had a net loss.\newline  
+
+
+```{r, echo=FALSE, message=FALSE, fig.height=2.5, fig.width = 5}
+
+require(ggplot2)
+require(RColorBrewer)
+require(viridis)
+require(gridExtra)
+
+success_rate <- Ad_success %>% 
+  group_by(netgain) %>% 
+  summarise(n=n()) %>%
+  ggplot(aes(x=netgain, y=n, fill = factor(netgain))) + 
+  geom_bar(stat = "identity", color = "black", position = position_dodge(), width = 0.4) +
+  scale_color_manual(values = c("#CC3333", "#339966")) +
+  scale_fill_manual(values = c("#CC3333", "#339966")) +
+  labs(fill = "Netgain", title = "Success Rate of Ads", x = "Successful", y="Count") + 
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+success_rate
+
+
+```
+
+**Around 30% of the Ads were successful**
+
+##Getting a glimpse of the data
+
+Now we try to determine the type of our variables and group them into categorical, ordinal and continuous. This is done in order to perform the EDA. 
+
+```{r, echo=FALSE, message=FALSE}
+glimpse(data_bin)
+```
+
+
+> Here are the following types of variables: 
+
+  + Categorical: Relationship status, Industry, Genre, Targeted sex, Airtime, Air location and Money back guarantee
+  + Ordinal: Expensive
+  + Continuous: Average runtime, Ratings
+
+
+\newpage
+
+##Univariate Analysis
+
+We can look at one variable and vary the colour palette. For this visual, I used the virdis default colour palette. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3}
+require(ggplot2)
+require(RColorBrewer)
+require(viridis)
+require(gridExtra)
+
+rel_stat <- Ad_success %>% 
+  group_by(relationship_status) %>% 
+  summarise(n=n()) %>%
+  ggplot(aes(x=reorder(relationship_status, n), y=n, fill = relationship_status)) + 
+  geom_col() + 
+  scale_fill_viridis_d() +
+  labs(title = "Relationship Status Summary", x = "Status", y="Count") + 
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+rel_stat
+
+```
+
+
+
+**We can also combine the representations into an array and vary the variables by colour.**\newline \newline
+
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=4}
+require(ggplot2)
+require(RColorBrewer)
+require(viridis)
+require(gridExtra)
+
+rat_den <- ggplot(Ad_success, aes(x=ratings)) + 
+  geom_density(color = "#000000", fill = "#330066") +
+  labs(title = "Ratings Summary", x = "Ratings", y="Density")
+
+runtime_den <- ggplot(Ad_success, aes(x=average_runtime.minutes_per_week.)) + 
+  geom_density(color = "#000000", fill = "#339999") +
+  labs(title = "Runtime Summary", x = "Runtime", y="Density")
+
+grid.arrange(rat_den, runtime_den, ncol = 2)
+
+```
+
+
+\newpage
+
+##Bivariate Analysis
+
+
+```{r, echo=FALSE, eval=FALSE, message=FALSE, warning=FALSE, fig.height=10}
+require(ggplot2)
+require(RColorBrewer)
+require(gridExtra)
+
+#FFCC66 #33FF99 #33CCFF #6666FF #CC66FF #FF6699 #FF6633 
+
+ind <- Ad_success %>% 
+  group_by(industry) %>% 
+  summarise(n=n()) %>%
+  ggplot(aes(x=reorder(industry, n), y=n)) + 
+  geom_col(fill = "#FFCC66") + 
+  labs(title = "Industry Summary", x = "Industry", y="Count") + 
+  theme(axis.text.x = element_text(size = 6))
+
+
+genre <- Ad_success %>% 
+  group_by(genre) %>% 
+  summarise(n=n()) %>%
+  ggplot(aes(x=reorder(genre, n), y=n)) + 
+  geom_col(fill = "#66CC99") + 
+  labs(title = "Genre Summary", x = "Genre", y="Count")
+  theme(axis.text.x = element_text(size = 10))
+
+
+sex <- Ad_success %>% 
+  group_by(targeted_sex) %>% 
+  summarise(n=n()) %>%
+  ggplot(aes(x=reorder(targeted_sex, n), y=n)) + 
+  geom_col(fill = "#33CCFF") + 
+  labs(title = "Targeted Sex Summary", x = "Targeted Sex", y="Count")
+
+
+atime <- Ad_success %>% 
+  group_by(airtime) %>% 
+  summarise(n=n()) %>%
+  ggplot(aes(x=reorder(airtime, n), y=n)) + 
+  geom_col(fill = "#6666FF") + 
+  labs(title = "Airtime Summary", x = "Airtime", y="Count")
+
+
+exp <- Ad_success %>% 
+  group_by(expensive) %>% 
+  summarise(n=n()) %>%
+  ggplot(aes(x=reorder(expensive, n), y=n)) + 
+  geom_col(fill = "#CC66FF") + 
+  labs(title = "Cost Summary", x = "Cost", y="Count")
+
+
+mon_guar <- Ad_success %>% 
+  group_by(money_back_guarantee) %>% 
+  summarise(n=n()) %>%
+  ggplot(aes(x=reorder(money_back_guarantee, n), y=n)) + 
+  geom_col(fill = "#FF6699") + 
+  labs(title = "Refund Summary", x = "Refund", y="Count")
+
+
+loc <- Ad_success %>% 
+  group_by(comb_loc) %>% 
+  summarise(n=n()) %>%
+  ggplot(aes(x=reorder(comb_loc, n), y=n)) + 
+  geom_col(fill = "#FF6633") + 
+  labs(title = "Location summary", x = "Location", y="Count")
+
+grid.arrange(ind, genre, sex, atime, exp, mon_guar, loc, ncol = 2)
+```
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10}
+
+require(ggplot2)
+require(gridExtra)
+
+
+genre_data <- Ad_success %>% 
+  group_by(genre, netgain) %>% 
+  summarise(n=n())
+bi_genre <- ggplot(data = genre_data, aes(x=genre, y=n, fill=factor(netgain)))+ 
+geom_bar(stat = "identity", color = "black", position = position_dodge(), width = 0.7) +
+scale_color_manual(values = c("#CC3333", "#339966")) +
+scale_fill_manual(values = c("#CC3333", "#339966")) +
+labs(fill = "Netgain", title = "Genre breakdown", x = "Genre", y="Count") + 
+theme(axis.text.x = element_text(size = 10))
+#bi_genre
+
+
+sex_data <- Ad_success %>% 
+  group_by(targeted_sex, netgain) %>% 
+  summarise(n=n())
+bi_sex <- ggplot(data = sex_data, aes(x=targeted_sex, y=n, fill=factor(netgain)))+ 
+geom_bar(stat = "identity", color = "black", position = position_dodge(), width = 0.7) +
+scale_color_manual(values = c("#CC3333", "#339966")) +
+scale_fill_manual(values = c("#CC3333", "#339966")) +
+labs(fill = "Netgain", title = "Targeted sex breakdown", x = "Gender", y="Count")
+#bi_sex
+
+
+atime_data <- Ad_success %>% 
+  group_by(airtime, netgain) %>% 
+  summarise(n=n())
+bi_atime <- ggplot(data = atime_data, aes(x=airtime, y=n, fill=factor(netgain)))+ 
+geom_bar(stat = "identity", color = "black", position = position_dodge(), width = 0.7) +
+scale_color_manual(values = c("#CC3333", "#339966")) +
+scale_fill_manual(values = c("#CC3333", "#339966")) +
+labs(fill = "Netgain", title = "Airtime breakdown", x = "Airtime", y="Count")
+#bi_atime
+
+
+exp_data <- Ad_success %>% 
+  group_by(expensive, netgain) %>% 
+  summarise(n=n())
+bi_exp <- ggplot(data = exp_data, aes(x=expensive, y=n, fill=factor(netgain)))+ 
+geom_bar(stat = "identity", color = "black", position = position_dodge(), width = 0.7) +
+scale_color_manual(values = c("#CC3333", "#339966")) +
+scale_fill_manual(values = c("#CC3333", "#339966")) +
+labs(fill = "Netgain", title = "Cost breakdown", x = "Cost", y="Count")
+#bi_exp
+
+
+refund_data <- Ad_success %>% 
+  group_by(money_back_guarantee, netgain) %>% 
+  summarise(n=n())
+bi_refund <- ggplot(data = refund_data, aes(x=money_back_guarantee, y=n, fill=factor(netgain)))+ 
+geom_bar(stat = "identity", color = "black", position = position_dodge(), width = 0.7) +
+scale_color_manual(values = c("#CC3333", "#339966")) +
+scale_fill_manual(values = c("#CC3333", "#339966")) +
+labs(fill = "Netgain", title = "Refund breakdown", x = "Money Back Guarantee", y="Count")
+#bi_refund
+
+
+loc_data <- Ad_success %>% 
+  group_by(comb_loc, netgain) %>% 
+  summarise(n=n())
+bi_loc <- ggplot(data = loc_data, aes(x=comb_loc, y=n, fill=factor(netgain)))+ 
+geom_bar(stat = "identity", color = "black", position = position_dodge(), width = 0.7) +
+scale_color_manual(values = c("#CC3333", "#339966")) +
+scale_fill_manual(values = c("#CC3333", "#339966")) +
+labs(fill = "Netgain", title = "Location summary", x = "Location", y="Count")
+#bi_loc
+
+grid.arrange(bi_genre, bi_sex, bi_atime, bi_exp, bi_refund, bi_loc, ncol = 2)
+
+```
+
+> Analysis
+
+  + Genre: We can see that most Ads were comical. While the proportion of dramatic ads seems to be extremely small compared to comedy, the ratio of success seems to be approximately equal. 
+  + Targeted sex: It is quite evident that a higher proportion of ads targted towards men were successful as compared to women. 
+  + Airtime: Ads aired at Primetime seem to have a higher rate of success. 
+  + Cost: While a large proportion of ads were inexpensive, low cost and high cost ads seemed to have an equal success rate. 
+  + Money back guarantee: this seemed to have negligible effect on the success of an ad. 
+  + Location: Most ads were aired in the US. It's not very apparent whether ads aired in other locations had a higher chance of being successful. 
+  
+\newpage 
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10}
+require(ggplot2)
+
+ind_data <- Ad_success %>% 
+  group_by(industry, netgain) %>% 
+  summarise(n=n())
+bi_ind <- ggplot(data = ind_data, aes(x=industry, y=n, fill=factor(netgain)))+ 
+geom_bar(stat = "identity", color = "black", position = position_dodge(), width = 0.7) +
+scale_color_manual(values = c("#CC3333", "#339966")) +
+scale_fill_manual(values = c("#CC3333", "#339966")) +
+labs(fill = "Netgain", title = "Industry breakdown", x = "Industry", y="Count") + 
+theme(axis.text.x = element_text(size = 11))
+#bi_ind
+
+
+status_data <- Ad_success %>% 
+  group_by(relationship_status, netgain) %>% 
+  summarise(n=n())
+bi_stat <- ggplot(data = status_data, aes(x=relationship_status, y=n, fill=factor(netgain)))+ 
+geom_bar(stat = "identity", color = "black", position = position_dodge(), width = 0.7) +
+scale_color_manual(values = c("#CC3333", "#339966")) +
+scale_fill_manual(values = c("#CC3333", "#339966")) +
+labs(fill = "Netgain", title = "Relationship Status summary", x = "Relationship Status", y="Count") + 
+theme(axis.text.x = element_text(size = 8))
+#bi_stat
+
+grid.arrange(bi_ind, bi_stat, ncol = 1)
+```
+
+
+> Analysis continued
+
+  + Industry: Pharma and other seemed to have the highest success rate. The political and class action ads seemed to have the lowest success rate. 
+  + Relationship Status: Married-civ-spouse seemed to have the highest success rate compared to all other statuses. 
+  
+  
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+require(ggplot2)
+require(gridExtra)
+
+bi_rat <- ggplot(data = Ad_success, aes(x=factor(netgain), y=ratings)) + 
+  geom_boxplot(aes(color = factor(netgain))) +
+scale_fill_manual(values = c("#CC3333", "#339966")) +
+labs(title = "Ratings", x = "Netgain", y="Ratings", color = "Netgain") + 
+theme(axis.text.x = element_text(size = 11))
+
+
+bi_runtime <- ggplot(data = Ad_success, aes(x=factor(netgain), y=average_runtime.minutes_per_week.)) + 
+  geom_boxplot(aes(color = factor(netgain))) +
+scale_fill_manual(values = c("#CC3333", "#339966")) +
+labs(fill = "Netgain", title = "Runtime", x = "Netgain", y="Avergae Runtime (minutes/week)", color = "Netgain") + 
+theme(axis.text.x = element_text(size = 11))
+
+grid.arrange(bi_rat, bi_runtime, ncol = 2)
+
+
+ggplot(Ad_success, aes(x=average_runtime.minutes_per_week., fill=netgain)) + geom_density() + labs(title="Runtime density plot", x="Runtime", y="density")
+
+
+```
+
+
+
+> Analysis continued
+
+  + Ratings: As seen in the univariate analysis of ratings, the data points were highly clustered from 0-0.10. Hence, it's not very clear whether the ratings affect the success rate of the ad or not. 
+  + Avergae runtime: From the boxplot, we can see that successfull ads tend to have a higher average runtime per week as compared to unsuccessfull ads. Although there is a large proportion of ads that run for around 40 mins, the difference is still noticeable. 
+  
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE}
+#Looks at proportions - useful for multivariate analysis
+require(ggpubr)
+
+air_sex <- ftable(Ad_success$airtime, Ad_success$targeted_sex, Ad_success$netgain)
+air_sex
+
+prop = c()
+for (i in 1:6){
+  prop_new = air_sex[i,2]/air_sex[i,1]
+  prop = cbind(prop, prop_new)
+}
+prop
+
+``` 
+
+
+
+## Looking at correlations
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+corrs <- Ad_success %>% select(ratings, average_runtime.minutes_per_week.) %>% select_if(is.numeric) %>% cor(method = "spearman")
+round(corrs,2)
+
+``` 
+
+**Since we only have 2 continuous variables, the correlation is 0.08. This is pretty low hence there is no risk of multicollinearity. We can keep both variables in the dataset.**
+
